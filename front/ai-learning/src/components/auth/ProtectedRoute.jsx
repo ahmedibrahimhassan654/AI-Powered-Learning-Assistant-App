@@ -1,6 +1,6 @@
-import React from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import Loading from "../common/Loading";
+import AppLayout from "../layout/AppLayout";
 
 const ProtectedRoute = () => {
   // In a real app, you would check for a token in localStorage or a global state
