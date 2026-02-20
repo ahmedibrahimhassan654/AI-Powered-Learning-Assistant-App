@@ -12,8 +12,17 @@ import NotFoundPage from "./pages/NotFound/NotFoundPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import Loading from "./components/common/Loading";
 
+// Import missing pages
+import FlashCardsList from "./pages/FlashCards/FlashCardsList";
+import FlashCardPage from "./pages/FlashCards/FlashCardPage";
+import QuizzesList from "./pages/Quizzes/QuizzesList";
+import QuizPage from "./pages/Quizzes/QuizPage";
+import DocumentsList from "./pages/Documents/DocumentListPage";
+import DocumentPage from "./pages/Documents/DocumentDetailPage";
+import ProfilePage from "./pages/Profile/ProfilePage";
+
 const App = () => {
-  const isAuth = !!localStorage.getItem("token") || true; // Sync with actual auth state
+  const isAuth = !!localStorage.getItem("token") || false; // Sync with actual auth state
   const loading = false;
 
   if (loading) {
