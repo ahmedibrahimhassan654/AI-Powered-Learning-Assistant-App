@@ -4,12 +4,13 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "node --watch index.js",
+    "dev": "nodemon server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "author": "Ahmed Ibrahim",
   "license": "ISC",
+  "type": "module",
   "description": "",
   "dependencies": {
     "@google/genai": "^1.42.0",

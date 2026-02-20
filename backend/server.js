@@ -1,0 +1,46 @@
+import dotenv from "dotenv";
+dotenv.config();
+
+import express from "express";
+import cors from "cors";
+import connectDB from "./config/db.js";
+import { errorHandler } from "./middleware/errorMiddleware.js";
+import authRoutes from "./routes/authRoutes.js";
+
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+
+connectDB();
+
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET,HEAD,PUT,PATCH,POST,DELETE"],
+    credentials: true,
+    allowedHeaders: ["Content-Type,Authorization"],
+  }),
+);
+app.use(express.json());
+
+app.use(express.urlencoded({ extended: true }));
+//error handler
+app.use(errorHandler);
+
+//static folder for uploaded files
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+//routes
+app.use("/api/auth", authRoutes);
+// app.use("/api/document", require("./routes/documentRoutes"));
+// app.use("/api/flashcard", require("./routes/flashcardRoutes"));
+// app.use("/api/quize", require("./routes/quizeRoutes"));
+
+
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
