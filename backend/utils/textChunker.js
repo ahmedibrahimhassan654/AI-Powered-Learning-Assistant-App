@@ -127,8 +127,16 @@ export const findRelevantChunks = (chunks, query, maxChunk = 3) => {
   });
 
   // Sort by score descending and take the top N
-  return scoredChunks
+  const relevantList = scoredChunks
     .filter((chunk) => chunk.relevanceScore > 0)
     .sort((a, b) => b.relevanceScore - a.relevanceScore)
     .slice(0, maxChunk);
+
+  // Fallback: If no exact matching terms found but document has chunks,
+  // provide the first 5 chunks to establish basic context
+  if (relevantList.length === 0 && chunks.length > 0) {
+    return chunks.slice(0, 5);
+  }
+
+  return relevantList;
 };

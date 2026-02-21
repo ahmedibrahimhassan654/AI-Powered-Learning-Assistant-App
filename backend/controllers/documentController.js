@@ -5,7 +5,10 @@ import fs from "fs/promises";
 import path from "path";
 import { extractTextFromPDF } from "../utils/pdfParser.js";
 import { chunkText } from "../utils/textChunker.js";
-import { analyzePDFWithAI } from "../utils/geminiService.js";
+import {
+  analyzePDFWithAI,
+  fixGarbledPagesWithAI,
+} from "../utils/geminiService.js";
 
 // @desc    Upload a new document
 // @route   POST /api/document/upload
@@ -52,52 +55,91 @@ const processDocument = async (docId, filePath) => {
   try {
     console.log(`[Background] Starting processing for Document ${docId}...`);
 
-    // 1. Extract Text using standard parser
-    let { text, numpages, info } = await extractTextFromPDF(filePath);
+    // 1. Extract Text page-by-page using standard parser
+    let { text, numpages, info, pages } = await extractTextFromPDF(filePath);
     console.log(
-      `[Background] Standard extraction got ${text?.length || 0} characters.`,
+      `[Background] Standard extraction: ${numpages} pages, ${text?.length || 0} chars.`,
     );
 
-    // 2. AI Fallback for poor extraction or "repeating watermarks"
-    const isWatermarkTrash = (text) => {
-      if (!text) return true;
-      const lines = text.split("\n").filter((l) => l.trim().length > 0);
-      if (lines.length > 10) {
-        // Check if many lines are exactly the same (watermark behavior)
-        const commonLines = lines.filter(
-          (l) =>
-            l.toLowerCase().includes("www.") ||
-            l.toLowerCase().includes(".com"),
-        );
-        if (commonLines.length > lines.length * 0.5) return true;
-      }
-      return text.trim().length < 50;
+    // 2. Check each page for gibberish (covers handwriting & bad Arabic encoding)
+    const isPageGibberish = (pageText) => {
+      if (!pageText || pageText.trim().length < 10) return false; // Skip empty pages
+      const readableMatch = pageText.match(
+        /[a-zA-Z\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\s\d]/g,
+      );
+      const readableCount = readableMatch ? readableMatch.length : 0;
+      return readableCount / pageText.length < 0.65;
     };
 
-    if (isWatermarkTrash(text)) {
+    // 3. If the WHOLE document is garbage, try whole-file AI OCR (scanned PDF)
+    const wholeDocIsGarbled =
+      pages.length > 0 &&
+      pages.filter((p) => isPageGibberish(p)).length > pages.length * 0.6;
+
+    if (wholeDocIsGarbled || pages.length === 0) {
       console.log(
-        `[Background] Detected poor text or watermarks in ${docId}, triggering AI OCR...`,
+        `[Background] Majority of pages are garbled (${docId}). Using whole-file AI OCR...`,
       );
       try {
         const aiText = await analyzePDFWithAI(filePath);
         if (aiText && aiText.trim().length > 50) {
           text = aiText;
           console.log(
-            `[Background] AI OCR success! Got ${text.length} characters.`,
+            `[Background] Whole-file AI OCR returned ${text.length} chars.`,
           );
         }
       } catch (aiError) {
-        console.error("[Background] AI Fallback failed:", aiError.message);
-        // We'll keep the bad text if AI fails, but it remains a failure for the user's purpose
+        console.error(
+          `[Background] Whole-file AI OCR failed:`,
+          aiError.message,
+        );
+      }
+    } else if (pages.length > 0) {
+      // 4. Only fix individual garbled pages, keep good pages as-is
+      const badPageIndexes = pages
+        .map((p, i) => (isPageGibberish(p) ? i : -1))
+        .filter((i) => i !== -1);
+
+      if (badPageIndexes.length > 0) {
+        console.log(
+          `[Background] ${badPageIndexes.length}/${pages.length} pages are garbled, fixing individually...`,
+        );
+        try {
+          const badPageTexts = badPageIndexes.map((i) => pages[i]);
+          const fixedMap = await fixGarbledPagesWithAI(
+            badPageTexts,
+            badPageIndexes,
+          );
+
+          // Merge fixed pages back in
+          fixedMap.forEach((fixedText, pageIdx) => {
+            pages[pageIdx] = fixedText;
+          });
+
+          // Rebuild full text with corrected pages
+          text = pages.map((p, i) => `[Page ${i + 1}]\n${p}`).join("\n\n");
+          console.log(
+            `[Background] Rebuilt full text with AI fixes: ${text.length} chars.`,
+          );
+        } catch (aiError) {
+          console.error(
+            `[Background] Page-level AI fixup failed:`,
+            aiError.message,
+          );
+        }
+      } else {
+        console.log(`[Background] All pages look good, no AI OCR needed.`);
       }
     }
 
-    // 3. Chunk Text
+    // 5. Chunk Text into manageable pieces
     console.log(`[Background] Splitting text into chunks...`);
     const chunks = chunkText(text);
-    console.log(`[Background] Created ${chunks.length} chunks.`);
+    console.log(
+      `[Background] Created ${chunks.length} chunks from ${numpages} pages.`,
+    );
 
-    // 4. Update Document
+    // 6. Update Document
     const updatedDoc = await Document.findByIdAndUpdate(
       docId,
       {
@@ -111,7 +153,9 @@ const processDocument = async (docId, filePath) => {
     );
 
     if (updatedDoc) {
-      console.log(`[Background] Document ${docId} is now READY.`);
+      console.log(
+        `[Background] Document ${docId} is now READY with ${chunks.length} chunks.`,
+      );
     } else {
       console.warn(`[Background] Could not find document ${docId} to update!`);
     }

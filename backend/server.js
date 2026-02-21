@@ -19,9 +19,23 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-if (process.env.NODE_ENV === "development") {
-  app.use(morgan("dev"));
-}
+// HTTP request logger — always on so you can see every request in the terminal
+morgan.token("body", (req) => {
+  const b = req.body;
+  if (!b || Object.keys(b).length === 0) return "-";
+  // Mask sensitive fields
+  const safe = { ...b };
+  if (safe.password) safe.password = "***";
+  if (safe.currentPassword) safe.currentPassword = "***";
+  if (safe.newPassword) safe.newPassword = "***";
+  return JSON.stringify(safe).substring(0, 200);
+});
+
+app.use(
+  morgan(
+    ":method :url :status :res[content-length]b - :response-time ms | body: :body",
+  ),
+);
 
 connectDB();
 
