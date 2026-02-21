@@ -28,7 +28,14 @@ const errorHandler = (err, req, res, next) => {
 
   // Multer file size error
   if (err.code === "LIMIT_FILE_SIZE") {
-    const message = "حجم الملف كبير جداً. الحد الأقصى هو 5 ميجابايت";
+    const message = "حجم الملف كبير جداً. الحد الأقصى هو 10 ميجابايت";
+    error = new Error(message);
+    res.status(400);
+  }
+
+  // Multer unexpected field error
+  if (err.code === "LIMIT_UNEXPECTED_FILE") {
+    const message = `حقل غير متوقع: ${err.field}. يرجى استخدام الحقل الصحيح (pdf)`;
     error = new Error(message);
     res.status(400);
   }

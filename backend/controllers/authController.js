@@ -23,10 +23,17 @@ export const registerUser = async (req, res, next) => {
 
     if (user) {
       res.status(201).json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        token: generateToken(user._id),
+        success: true,
+        message: "تم تسجيل المستخدم بنجاح",
+        data: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          profileImage: user.profileImage,
+          token: generateToken(user._id, user.tokenVersion),
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+        },
       });
     } else {
       res.status(400);
@@ -48,10 +55,15 @@ export const loginUser = async (req, res, next) => {
 
     if (user && (await user.matchPassword(password))) {
       res.json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        token: generateToken(user._id),
+        success: true,
+        message: "تم تسجيل الدخول بنجاح",
+        data: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          profileImage: user.profileImage,
+          token: generateToken(user._id, user.tokenVersion),
+        },
       });
     } else {
       res.status(401);
@@ -71,9 +83,14 @@ export const getMe = async (req, res, next) => {
 
     if (user) {
       res.json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
+        success: true,
+        message: "تم جلب بيانات المستخدم بنجاح",
+        data: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          profileImage: user.profileImage,
+        },
       });
     } else {
       res.status(404);
@@ -94,14 +111,20 @@ export const updateMe = async (req, res, next) => {
     if (user) {
       user.name = req.body.name || user.name;
       user.email = req.body.email || user.email;
+      user.profileImage = req.body.profileImage || user.profileImage;
 
       const updatedUser = await user.save();
 
       res.json({
-        _id: updatedUser._id,
-        name: updatedUser.name,
-        email: updatedUser.email,
-        token: generateToken(updatedUser._id),
+        success: true,
+        message: "تم تحديث البيانات بنجاح",
+        data: {
+          _id: updatedUser._id,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          profileImage: updatedUser.profileImage,
+          token: generateToken(updatedUser._id, updatedUser.tokenVersion),
+        },
       });
     } else {
       res.status(404);
@@ -123,7 +146,11 @@ export const changePassword = async (req, res, next) => {
     if (user && (await user.matchPassword(currentPassword))) {
       user.password = newPassword;
       await user.save();
-      res.json({ message: "تم تغيير كلمة المرور بنجاح" });
+      res.json({
+        success: true,
+        message: "تم تغيير كلمة المرور بنجاح",
+        data: null,
+      });
     } else {
       res.status(401);
       throw new Error("كلمة المرور الحالية غير صحيحة");
@@ -138,7 +165,16 @@ export const changePassword = async (req, res, next) => {
 // @access  Private
 export const logout = async (req, res, next) => {
   try {
-    res.json({ message: "تم تسجيل الخروج بنجاح" });
+    const user = await User.findById(req.user._id);
+    if (user) {
+      user.tokenVersion += 1;
+      await user.save();
+    }
+    res.json({
+      success: true,
+      message: "تم تسجيل الخروج بنجاح",
+      data: null,
+    });
   } catch (error) {
     next(error);
   }

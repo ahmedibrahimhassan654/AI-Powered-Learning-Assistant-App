@@ -26,6 +26,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "https://cdn-icons-png.flaticon.com/512/149/149071.png",
     },
+    passwordChangedAt: Date,
+    tokenVersion: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,
@@ -35,11 +40,16 @@ const userSchema = new mongoose.Schema(
 // Encrypt password using bcrypt
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) {
-    next();
+    return next();
   }
 
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
+
+  // Update passwordChangedAt if the password is being modified (not for new users)
+  if (!this.isNew) {
+    this.passwordChangedAt = Date.now() - 1000; // Subtract 1s to ensure token iat is after this
+  }
 });
 
 // Match user entered password to hashed password in database

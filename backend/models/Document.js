@@ -24,8 +24,16 @@ const documentSchema = new mongoose.Schema(
     filesize: {
       type: Number,
     },
+    totalPages: {
+      type: Number,
+      default: 0,
+    },
+    metadata: {
+      type: Object,
+    },
     extractedText: {
       type: String,
+      default: "",
     },
     chunks: [
       {
@@ -51,9 +59,15 @@ const documentSchema = new mongoose.Schema(
       enum: ["processing", "ready", "failed"],
       default: "processing",
     },
+    uploadDate: {
+      type: Date,
+      default: Date.now,
+    },
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   },
 );
 
