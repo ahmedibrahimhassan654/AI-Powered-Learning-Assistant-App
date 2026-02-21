@@ -7,6 +7,7 @@ import connectDB from "./config/db.js";
 import { errorHandler } from "./middleware/errorMiddleware.js";
 import authRoutes from "./routes/authRoutes.js";
 import documentRoutes from "./routes/documentRoutes.js";
+import aiRoutes from "./routes/aiRoutes.js";
 
 import path from "path";
 import { fileURLToPath } from "url";
@@ -41,6 +42,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 //routes
 app.use("/api/auth", authRoutes);
 app.use("/api/document", documentRoutes);
+app.use("/api/ai", aiRoutes);
 // app.use("/api/flashcard", require("./routes/flashcardRoutes"));
 // app.use("/api/quize", require("./routes/quizeRoutes"));
 

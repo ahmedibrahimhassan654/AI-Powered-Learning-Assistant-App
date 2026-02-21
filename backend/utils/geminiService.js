@@ -54,3 +54,52 @@ export const analyzePDFWithAI = async (filePath) => {
     throw new Error("فشل في تحليل الملف باستخدام الذكاء الاصطناعي");
   }
 };
+
+/**
+ * Generate a chat response using RAG (Context + History)
+ * @param {string} userQuery - The user's question
+ * @param {string} context - Relevant document chunks
+ * @param {Array} history - Previous chat messages
+ * @returns {Promise<string>}
+ */
+export const generateChatResponse = async (
+  userQuery,
+  context,
+  history = [],
+) => {
+  try {
+    const aiClient = getGenAI();
+    const model = aiClient.getGenerativeModel({ model: "gemini-flash-latest" });
+
+    // Start a chat session with history if available
+    // Format history for Gemini SDK
+    const formattedHistory = history.map((msg) => ({
+      role: msg.role === "assistant" ? "model" : "user",
+      parts: [{ text: msg.content }],
+    }));
+
+    const chat = model.startChat({
+      history: formattedHistory,
+      generationConfig: {
+        maxOutputTokens: 1000,
+      },
+    });
+
+    const systemPrompt = `You are a helpful learning assistant. Answer the user's question based ONLY on the provided context from their document. 
+If the answer is not in the context, politely say that the information is not in the document. 
+If the user asks in Arabic, answer in Arabic.
+
+CONTEXT:
+${context}
+
+USER QUESTION:
+${userQuery}`;
+
+    const result = await chat.sendMessage(systemPrompt);
+    const response = await result.response;
+    return response.text();
+  } catch (error) {
+    console.error("Gemini Chat Error:", error);
+    throw new Error("فشل في الحصول على رد من الذكاء الاصطناعي");
+  }
+};
