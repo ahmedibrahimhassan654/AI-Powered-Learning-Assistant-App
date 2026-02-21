@@ -25,6 +25,7 @@ const Sidebar = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     window.location.href = "/login";
   };
 
@@ -44,7 +45,7 @@ const Sidebar = () => {
 
       {/* Logo Area */}
       <div className="p-6 flex items-center gap-3">
-        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shrink-0 shadow-lg shadow-primary/20">
+        <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shrink-0 shadow-lg shadow-indigo-100">
           <BrainCircuit size={24} />
         </div>
         {!isCollapsed && (
@@ -64,14 +65,14 @@ const Sidebar = () => {
               to={item.path}
               className={`flex items-center gap-3 p-3 rounded-xl transition-all group relative ${
                 isActive
-                  ? "bg-primary/10 text-primary font-semibold"
-                  : "text-gray-500 hover:bg-gray-50 hover:text-primary"
+                  ? "bg-indigo-50 text-indigo-600 font-semibold"
+                  : "text-gray-500 hover:bg-gray-50 hover:text-indigo-600"
               }`}
             >
               <item.icon
                 size={22}
                 className={
-                  isActive ? "text-primary" : "group-hover:text-primary"
+                  isActive ? "text-indigo-600" : "group-hover:text-indigo-600"
                 }
               />
               {!isCollapsed && <span>{item.name}</span>}

@@ -11,6 +11,7 @@ import DashboardPage from "./pages/Dashboard/DashboardPage";
 import NotFoundPage from "./pages/NotFound/NotFoundPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import Loading from "./components/common/Loading";
+import { Toaster } from "react-hot-toast";
 
 // Import missing pages
 import FlashCardsList from "./pages/FlashCards/FlashCardsList";
@@ -20,29 +21,15 @@ import QuizPage from "./pages/Quizzes/QuizPage";
 import DocumentsList from "./pages/Documents/DocumentListPage";
 import DocumentPage from "./pages/Documents/DocumentDetailPage";
 import ProfilePage from "./pages/Profile/ProfilePage";
+import HomePage from "./pages/Home/HomePage";
 
 const App = () => {
-  const isAuth = !!localStorage.getItem("token") || false; // Sync with actual auth state
-  const loading = false;
-
-  if (loading) {
-    return <Loading />;
-  }
-
   return (
     <div dir="rtl" className="min-h-screen font-display">
+      <Toaster position="top-center" reverseOrder={false} />
       <Router>
         <Routes>
-          <Route
-            path="/"
-            element={
-              isAuth ? (
-                <Navigate to="/dashboard" replace />
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
-          />
+          <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPages />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route element={<ProtectedRoute />}>

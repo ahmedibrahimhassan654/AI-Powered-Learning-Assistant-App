@@ -111,7 +111,11 @@ export const updateMe = async (req, res, next) => {
     if (user) {
       user.name = req.body.name || user.name;
       user.email = req.body.email || user.email;
-      user.profileImage = req.body.profileImage || user.profileImage;
+
+      if (req.file) {
+        // Store only the relative path (replace backslashes with forward slashes for cross-platform)
+        user.profileImage = req.file.path.replace(/\\/g, "/");
+      }
 
       const updatedUser = await user.save();
 
