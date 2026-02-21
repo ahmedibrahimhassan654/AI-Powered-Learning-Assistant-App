@@ -5,6 +5,7 @@ import fs from "fs/promises";
 import path from "path";
 import { extractTextFromPDF } from "../utils/pdfParser.js";
 import { chunkText } from "../utils/textChunker.js";
+import { analyzePDFWithAI } from "../utils/geminiService.js";
 
 // @desc    Upload a new document
 // @route   POST /api/document/upload
@@ -57,9 +58,38 @@ const processDocument = async (docId, filePath) => {
       `[Background] Standard extraction got ${text?.length || 0} characters.`,
     );
 
-    // 2. (AI Fallback skipped as requested)
-    if (!text || text.trim().length === 0) {
-      console.warn(`[Background] No text extracted from document ${docId}.`);
+    // 2. AI Fallback for poor extraction or "repeating watermarks"
+    const isWatermarkTrash = (text) => {
+      if (!text) return true;
+      const lines = text.split("\n").filter((l) => l.trim().length > 0);
+      if (lines.length > 10) {
+        // Check if many lines are exactly the same (watermark behavior)
+        const commonLines = lines.filter(
+          (l) =>
+            l.toLowerCase().includes("www.") ||
+            l.toLowerCase().includes(".com"),
+        );
+        if (commonLines.length > lines.length * 0.5) return true;
+      }
+      return text.trim().length < 50;
+    };
+
+    if (isWatermarkTrash(text)) {
+      console.log(
+        `[Background] Detected poor text or watermarks in ${docId}, triggering AI OCR...`,
+      );
+      try {
+        const aiText = await analyzePDFWithAI(filePath);
+        if (aiText && aiText.trim().length > 50) {
+          text = aiText;
+          console.log(
+            `[Background] AI OCR success! Got ${text.length} characters.`,
+          );
+        }
+      } catch (aiError) {
+        console.error("[Background] AI Fallback failed:", aiError.message);
+        // We'll keep the bad text if AI fails, but it remains a failure for the user's purpose
+      }
     }
 
     // 3. Chunk Text
@@ -124,11 +154,32 @@ export const getDocument = async (req, res, next) => {
       res.status(404);
       throw new Error("المستند غير موجود");
     }
+    // get counts of associated flashcards and quizzes for the current user
+    const flashcardsCount = await Flashcard.countDocuments({
+      document: document._id,
+      user: req.user._id,
+    });
+    const quizzesCount = await Quize.countDocuments({
+      document: document._id,
+      user: req.user._id,
+    });
+
+    //update last accessed time
+    document.lastAccessedAt = Date.now();
+    await document.save();
+    //compine document data eith counts
+    const documentWithCounts = {
+      ...document._doc,
+      flashcardsCount,
+      quizzesCount,
+    };
 
     res.json({
       success: true,
       message: "تم جلب المستند بنجاح",
-      data: document,
+      data: documentWithCounts,
+      flashcardsCount,
+      quizzesCount,
     });
   } catch (error) {
     next(error);

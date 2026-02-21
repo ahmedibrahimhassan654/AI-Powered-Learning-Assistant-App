@@ -1,14 +1,20 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import fs from "fs";
 
-if (
-  !process.env.GEMINI_API_KEY ||
-  process.env.GEMINI_API_KEY === "your_gemini_api_key_here"
-) {
-  console.warn("WARNING: GEMINI_API_KEY is not configured in .env");
-}
+// We'll initialize lazily to ensure process.env is loaded
+let genAI = null;
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const getGenAI = () => {
+  if (!genAI) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || apiKey === "your_gemini_api_key_here") {
+      console.error("CRITICAL: GEMINI_API_KEY is not configured in .env");
+      throw new Error("يرجى إعداد GEMINI_API_KEY في ملف .env");
+    }
+    genAI = new GoogleGenerativeAI(apiKey);
+  }
+  return genAI;
+};
 
 /**
  * Helper to convert file data to GoogleGenerativeAI.Part object
@@ -32,10 +38,11 @@ function fileToGenerativePart(path, mimeType) {
  */
 export const analyzePDFWithAI = async (filePath) => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const aiClient = getGenAI();
+    const model = aiClient.getGenerativeModel({ model: "gemini-flash-latest" });
 
     const prompt =
-      "Please extract and summarize the text from this PDF. If the content is in Arabic, please preserve the Arabic text exactly. Provide the full text content found in the document.";
+      "Please extract the full text content from this document. If the content is in Arabic, please preserve and provide the exact Arabic text. Do not summarize; provide all text found on the pages.";
 
     const filePart = fileToGenerativePart(filePath, "application/pdf");
 
